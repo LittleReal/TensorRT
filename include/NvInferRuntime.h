@@ -40,6 +40,7 @@ class IPluginFactory; //!< Forward declaration of IPluginFactory for use by othe
 //! \note at present, kSAFE_DLA flow doesn't strictly limit execution to DLA devices - it simply
 //! restricts the engine capabilities to DLA support levels anticipated in future releases.
 //!
+// engine 推理限制
 enum class EngineCapability : int
 {
     kDEFAULT = 0,  //!< Full capability, TensorRT mode without any restrictions.
@@ -62,6 +63,7 @@ constexpr inline int EnumMax<EngineCapability>()
 //! The weights are held by reference until the engine has been built. Therefore the data referenced
 //! by \p values field should be preserved until the build is complete.
 //!
+// layer parameter 的数据结构
 class Weights
 {
 public:
@@ -80,6 +82,7 @@ public:
 //!
 //! \warning Do not inherit from this class, as doing so will break forward-compatibility of the API and ABI.
 //!
+// host memory
 class IHostMemory
 {
 public:
@@ -98,6 +101,7 @@ protected:
 //! Plugins are a mechanism for applications to implement custom layers. Each plugin is owned by the application, and its lifetime
 //! must span any use of it by TensorRT
 //!
+// 现在大多数的 plugin 继承于 IpluginV2
 class IPlugin
 {
 public:
@@ -119,6 +123,7 @@ public:
     //!
     //! This function is called by the implementations of INetworkDefinition and IBuilder. In particular, it is called prior to any call to initialize().
     //!
+    // 根据 input 的 dims 信息计算 output 的 dims 信息
     virtual Dims getOutputDimensions(int index, const Dims* inputs, int nbInputDims) TRTNOEXCEPT = 0;
 
     //!
@@ -137,6 +142,7 @@ public:
     //!
     //! This method is not called for PluginExt classes, configureWithFormat is called instead.
     //!
+    // 根据输入输出维度信息确定一些参数，layer 的某些参数的初始化 api，在 network->add... 操作之前调用
     virtual void configure(const Dims* inputDims, int nbInputs, const Dims* outputDims, int nbOutputs, int maxBatchSize) TRTNOEXCEPT = 0;
 
     //!
@@ -144,12 +150,14 @@ public:
     //!
     //! \return 0 for success, else non-zero (which will cause engine termination).
     //!
+    // 创建 engine 时调用的 api，api 中的操作会影响 enqueue
     virtual int initialize() TRTNOEXCEPT = 0;
 
     //!
     //! \brief Release resources acquired during plugin layer initialization. This is called when the engine is destroyed.
     //! \see initialize()
     //!
+    // 释放 intialize 中分配的内存或者撤销其进行的其他操作
     virtual void terminate() TRTNOEXCEPT = 0;
 
     //!
@@ -160,6 +168,7 @@ public:
     //!
     //! \return The workspace size.
     //!
+    // 该 layer 可以使用的 gpu memory 的 size，在 layer 的操作中要根据该 size 提取所需显存，切忌在 layer 中自己分配显存。
     virtual size_t getWorkspaceSize(int maxBatchSize) const TRTNOEXCEPT = 0;
 
     //!
@@ -173,6 +182,7 @@ public:
     //!
     //! \return 0 for success, else non-zero (which will cause engine termination).
     //!
+    // 实际的推理操作，即 kenel 的调用
     virtual int enqueue(int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream) TRTNOEXCEPT = 0;
 
     //!
@@ -189,6 +199,7 @@ public:
     //!
     //! \see getSerializationSize()
     //!
+    // write buffer
     virtual void serialize(void* buffer) TRTNOEXCEPT = 0;
 
     virtual ~IPlugin() {}
@@ -225,6 +236,7 @@ public:
     //! This function is called by the implementations of INetworkDefinition, IBuilder, and ICudaEngine.
     //! In particular, it is called when creating an engine and when deserializing an engine.
     //!
+    // 判断 plugin 是否支持某种数据格式，比如 kNCHW，PluginFromte = TensorFormat，参考 NvInferRuntimeCommon.h:203
     virtual bool supportsFormat(DataType type, PluginFormat format) const TRTNOEXCEPT = 0;
 
     //!
@@ -243,6 +255,7 @@ public:
     //!
     //! The dimensions passed here do not include the outermost batch size (i.e. for 2-D image networks, they will be 3-dimensional CHW dimensions).
     //!
+    // builder initialize api, 类似于 IPlugin::configure
     virtual void configureWithFormat(const Dims* inputDims, int nbInputs, const Dims* outputDims, int nbOutputs, DataType type, PluginFormat format, int maxBatchSize) TRTNOEXCEPT = 0;
 
     virtual ~IPluginExt() {}
@@ -251,6 +264,7 @@ protected:
     //!
     //! \brief Derived classes should not implement this. In a C++11 API it would be override final.
     //!
+    // configure 被 configureWithFormate 替换
     void configure(const Dims* /*inputDims*/, int /*nbInputs*/, const Dims* /*outputDims*/, int /*nbOutputs*/, int /*maxBatchSize*/) _TENSORRT_FINAL TRTNOEXCEPT {}
 };
 
@@ -347,6 +361,7 @@ class DimsExprs
 {
 public:
     int nbDims;                              //!< The number of dimensions.
+    // MAX_DIMS 是常量 8，refer to NvInferRuntimeCommon.h: 176
     const IDimensionExpr* d[Dims::MAX_DIMS]; //!< The extent of each dimension.
 };
 
@@ -358,6 +373,7 @@ public:
 struct DynamicPluginTensorDesc
 {
     //! Information required to interpret a pointer to tensor data, except that desc.dims has -1 in place of any runtime dimension.
+    // refer to NvInferRuntimeCommon.h: 278
     PluginTensorDesc desc;
 
     //! Lower bounds on tensor’s dimensions

@@ -325,6 +325,7 @@ public:
     //! \brief Return the plugin type. Should match the plugin name returned by the corresponding plugin creator
     // \see IPluginCreator::getPluginName()
     //!
+    // op name
     virtual const char* getPluginType() const TRTNOEXCEPT = 0;
 
     //!
@@ -367,6 +368,7 @@ public:
     //! will not be passed in, this is to keep backward compatibility with TensorRT 5.x series.  Use PluginV2IOExt
     //! or PluginV2DynamicExt for other PluginFormats.
     //!
+    // 判断 plugin 是否支持某种数据格式，比如 kNCHW，PluginFromte = TensorFormat，参考 NvInferRuntimeCommon.h:203
     virtual bool supportsFormat(DataType type, PluginFormat format) const TRTNOEXCEPT = 0;
 
     //!
@@ -389,6 +391,7 @@ public:
     //! will not be passed in, this is to keep backward compatibility with TensorRT 5.x series.  Use PluginV2IOExt
     //! or PluginV2DynamicExt for other PluginFormats.
     //!
+    // builder intialize api，根据输入输出信息的初始化操作
     virtual void configureWithFormat(const Dims* inputDims, int nbInputs, const Dims* outputDims, int nbOutputs, DataType type, PluginFormat format, int maxBatchSize) TRTNOEXCEPT = 0;
 
     //!
@@ -396,12 +399,14 @@ public:
     //!
     //! \return 0 for success, else non-zero (which will cause engine termination).
     //!
+    // engine initalize api
     virtual int initialize() TRTNOEXCEPT = 0;
 
     //!
     //! \brief Release resources acquired during plugin layer initialization. This is called when the engine is destroyed.
     //! \see initialize()
     //!
+    // engine destroy 时触发的api
     virtual void terminate() TRTNOEXCEPT = 0;
 
     //!
@@ -412,6 +417,7 @@ public:
     //!
     //! \return The workspace size.
     //!
+    // 该 layer 可用的 gpu memory size
     virtual size_t getWorkspaceSize(int maxBatchSize) const TRTNOEXCEPT = 0;
 
     //!
@@ -432,6 +438,7 @@ public:
     //!
     //! \return The size of the serialization buffer.
     //!
+    // engine serialize 时触发的 api
     virtual size_t getSerializationSize() const TRTNOEXCEPT = 0;
 
     //!
@@ -441,6 +448,7 @@ public:
     //!
     //! \see getSerializationSize()
     //!
+    // engine serialize 时触发的 api，write buffer
     virtual void serialize(void* buffer) const TRTNOEXCEPT = 0;
 
     //!
@@ -542,7 +550,7 @@ public:
     //! will not be passed in, this is to keep backward compatibility with TensorRT 5.x series.  Use PluginV2IOExt
     //! or PluginV2DynamicExt for other PluginFormats.
     //!
-
+    // builder initialze api
     virtual void configurePlugin(const Dims* inputDims, int nbInputs, const Dims* outputDims,
                                  int nbOutputs, const DataType* inputTypes, const DataType* outputTypes,
                                  const bool* inputIsBroadcast, const bool* outputIsBroadcast, PluginFormat floatFormat, int maxBatchSize) TRTNOEXCEPT = 0;
@@ -778,6 +786,7 @@ public:
     //!
     //! \brief Return the plugin name.
     //!
+    // return the same as IPlugin::getPluginType()
     virtual const char* getPluginName() const TRTNOEXCEPT = 0;
 
     //!
@@ -789,6 +798,7 @@ public:
     //! \brief Return a list of fields that needs to be passed to createPlugin.
     //! \see PluginFieldCollection
     //!
+    // plugin 的参数信息，具体可以参考 plugin/ 路径下各个 custome op 对其处理方式
     virtual const PluginFieldCollection* getFieldNames() TRTNOEXCEPT = 0;
 
     //!
@@ -799,6 +809,7 @@ public:
     //!
     //! \brief Called during deserialization of plugin layer. Return a plugin object.
     //!
+    // engine deserialize 时调用的 api
     virtual IPluginV2* deserializePlugin(const char* name, const void* serialData, size_t serialLength) TRTNOEXCEPT = 0;
 
     //!
